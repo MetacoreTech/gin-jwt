@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
+	
 	"github.com/gin-gonic/gin"
 	"gopkg.in/dgrijalva/jwt-go.v3"
 )
@@ -69,7 +69,7 @@ type GinJWTMiddleware struct {
 	RefreshResponse func(*gin.Context, int, string, time.Time)
 
 	// Set the identity handler function
-	IdentityHandler func(jwt.MapClaims) interface{}
+	IdentityHandler func(*gin.Context) interface{}
 
 	// Set the identity key
 	IdentityKey string
@@ -287,7 +287,8 @@ func (mw *GinJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.IdentityHandler == nil {
-		mw.IdentityHandler = func(claims jwt.MapClaims) interface{} {
+		mw.IdentityHandler = func(c *gin.Context) interface{} {
+			claims := ExtractClaims(c)
 			return claims[mw.IdentityKey]
 		}
 	}
@@ -334,9 +335,11 @@ func (mw *GinJWTMiddleware) middlewareImpl(c *gin.Context) {
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
-
-	identity := mw.IdentityHandler(claims)
+	
 	c.Set("JWT_PAYLOAD", claims)
+
+	identity := mw.IdentityHandler(c)
+
 	if identity != nil {
 		c.Set(mw.IdentityKey, identity)
 	}
